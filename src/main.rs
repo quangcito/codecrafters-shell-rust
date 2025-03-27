@@ -46,6 +46,17 @@ fn main() {
                     },
                 }
             }
+            s if s.starts_with("cd ") => {
+                let path = s.split_at(3).1.trim();
+                let path_obj = Path::new(path);
+                if path_obj.exists() && path_obj.is_dir() {
+                    if let Err(e) = env::set_current_dir(path_obj) {
+                        println!("cd: {}: {}", path, e);
+                    }
+                } else {
+                    println!("cd: {}: No such file or directory", path);
+                }
+            }
             "exit 0" => break,
             "pwd" => println!("{}", env::current_dir().unwrap().display()),
             line => {
