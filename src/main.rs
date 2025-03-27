@@ -6,7 +6,6 @@ fn main() {
     let stdin = io::stdin();
     let mut input = String::new();
 
-
     loop {
         input.clear();
         print!("$ ");
