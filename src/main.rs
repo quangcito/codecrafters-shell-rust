@@ -76,7 +76,7 @@ fn main() {
                         }
                     },
                     None => {
-                        println!("{}: command not found", input_trimmed),
+                        println!("{}: command not found", input_trimmed);
                     }
                 }
             }
