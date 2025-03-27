@@ -15,7 +15,10 @@ fn main() {
         stdin.read_line(&mut input).unwrap();
         match input.trim() {
             "exit 0" => break,
-            &_ => {
+            input if input.starts_with("echo ") => {
+                println!("{}", &input[5..])
+            },
+            _ => {
                 println!("{}: command not found", input.trim());
             }
         }
