@@ -1,5 +1,6 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use pathsearch::find_executable_in_path;
 
 fn main() {
     let mut stdout = io::stdout();
@@ -21,7 +22,12 @@ fn main() {
                 "echo" => println!("{}", args),
                 "type" => match args {
                     "echo" | "exit" | "type" => println!("{} is a shell builtin", args),
-                    _ => println!("{}: not found", args),
+                    _ => {
+                        match find_executable_in_path(args) {
+                            Some(path) => println!("{} is {}", args, path.to_string_lossy()),
+                            None => println!("{}: not found", args),
+                        }
+                    },
                 },
                 &_ => println!("{}: command not found", input.trim()),
             },
