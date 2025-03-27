@@ -8,6 +8,7 @@ fn main() {
     let env_path = std::env::vars_os()
         .find(|v| "PATH".eq(&v.0))
         .map(|ev| ev.1.into_string().unwrap());
+
     let b: String;
     let ep = if env_path.is_some() {
         b = env_path.unwrap();
@@ -15,6 +16,7 @@ fn main() {
     } else {
         None::<Vec<&Path>>
     };
+
     loop {
         print!("$ ");
         io::stdout().flush().unwrap();
@@ -23,6 +25,7 @@ fn main() {
         let mut input = String::new();
         stdin.read_line(&mut input).unwrap();
         let trimmed_input = input.trim_end();
+
         match trimmed_input {
             s if s.starts_with("echo ") => {
                 println!("{}", trimmed_input.split_at(5).1);
@@ -30,7 +33,7 @@ fn main() {
             s if s.starts_with("type ") => {
                 let arg = s.split_at(5).1;
                 match arg {
-                    "echo" | "exit" | "type" => println!("{arg} is a shell builtin"),
+                    "echo" | "exit" | "type" | "pwd" => println!("{arg} is a shell builtin"),
                     _ => match ep {
                         Some(ref e) => {
                             if let Some(dir) = e.iter().find(|t| t.join(arg).exists()) {
@@ -55,10 +58,9 @@ fn main() {
                     Some(ref e) => {
                         if let Some(_dir) = e.iter().find(|t| t.join(cmd).exists()) {
                             let output = Command::new(cmd)
-                                .args(args.split_whitespace())  // Changed to split_whitespace for better handling
+                                .args(args.split_whitespace()) // Changed to split_whitespace for better handling
                                 .output()
                                 .unwrap();
-
                             // Print stdout only once
                             io::stdout().write_all(&output.stdout).unwrap();
                             io::stderr().write_all(&output.stderr).unwrap();
