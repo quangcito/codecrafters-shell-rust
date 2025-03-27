@@ -2,6 +2,7 @@
 use std::io::{self, Write};
 use std::process::Command;
 use pathsearch::find_executable_in_path;
+use std::os::unix::fs;
 
 fn main() {
     let mut stdout = io::stdout();
@@ -58,17 +59,37 @@ fn main() {
                 // Try to execute as an external command
                 match find_executable_in_path(command) {
                     Some(path) => {
-                        // Get all arguments (excluding the command)
-                        let args = if parts.len() > 1 {
-                            &parts[1..]
-                        } else {
-                            &[]
-                        };
+                        // Build the command arguments
+                        let mut cmd_args = String::new();
+                        for part in &parts[1..] {
+                            if !cmd_args.is_empty() {
+                                cmd_args.push(' ');
+                            }
+                            // Escape any spaces or special characters
+                            if part.contains(' ') || part.contains('"') || part.contains('\'') {
+                                cmd_args.push_str(&format!("\"{}\"", part.replace("\"", "\\\"")));
+                            } else {
+                                cmd_args.push_str(part);
+                            }
+                        }
 
-                        // Create a command that properly uses the command name, not the path
-                        match Command::new(&path).args(args).output() {
+                        // Use a shell script with a symbolic link to preserve the command name
+                        let sh_cmd = format!(
+                            "TEMP_DIR=$(mktemp -d) && \
+                             ln -sf {} $TEMP_DIR/{} && \
+                             $TEMP_DIR/{} {} && \
+                             rm -rf $TEMP_DIR",
+                            path.to_string_lossy(),
+                            command,
+                            command,
+                            cmd_args
+                        );
+
+                        match Command::new("sh")
+                              .arg("-c")
+                              .arg(sh_cmd)
+                              .output() {
                             Ok(output) => {
-                                // Print the output
                                 io::stdout().write_all(&output.stdout).unwrap();
                                 io::stderr().write_all(&output.stderr).unwrap();
                             },
