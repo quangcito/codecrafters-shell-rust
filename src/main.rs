@@ -14,72 +14,70 @@ fn main() {
         stdout.flush().unwrap();
         stdin.read_line(&mut input).unwrap();
 
-        match input.trim().split_once(' ') {
-            Some((command, args)) => match command {
-                "exit" => match args {
-                    "0" => break,
-                    _ => println!("{}: command not found", input.trim()),
-                },
-                "echo" => println!("{}", args),
-                "type" => match args {
-                    "echo" | "exit" | "type" => println!("{} is a shell builtin", args),
-                    _ => {
-                        match find_executable_in_path(args) {
-                            Some(path) => println!("{} is {}", args, path.to_string_lossy()),
-                            None => println!("{}: not found", args),
-                        }
-                    },
-                },
-                _ => {
-                    // Try to execute as an external command
-                    match find_executable_in_path(command) {
-                        Some(path) => {
-                            // Split args by spaces to get individual arguments
-                            let arg_parts: Vec<&str> = args.split_whitespace().collect();
+        let input_trimmed = input.trim();
 
-                            // Execute the command with arguments
-                            match Command::new(path).args(arg_parts).output() {
-                                Ok(output) => {
-                                    // Print the output
-                                    io::stdout().write_all(&output.stdout).unwrap();
-                                    io::stderr().write_all(&output.stderr).unwrap();
-                                },
-                                Err(_) => println!("Failed to execute: {}", command),
-                            }
-                        },
-                        None => {
-                            println!("{}: command not found", input.trim());
-                        }
-                    }
+        if input_trimmed.is_empty() {
+            continue;
+        }
+
+        let parts: Vec<&str> = input_trimmed.split_whitespace().collect();
+        let command = parts[0];
+
+        match command {
+            "exit" => {
+                if parts.len() > 1 && parts[1] == "0" {
+                    break;
+                } else {
+                    println!("{}: command not found", input_trimmed);
                 }
             },
-            None => {
-                // No arguments
-                let command = input.trim();
-                if !command.is_empty() {
-                    match command {
-                        "exit" | "echo" | "type" => println!("{}: command not found", command),
+            "echo" => {
+                if parts.len() > 1 {
+                    println!("{}", &input_trimmed[5..]);
+                } else {
+                    println!();
+                }
+            },
+            "type" => {
+                if parts.len() > 1 {
+                    let arg = parts[1];
+                    match arg {
+                        "echo" | "exit" | "type" => println!("{} is a shell builtin", arg),
                         _ => {
-                            // Try to execute as an external command without arguments
-                            match find_executable_in_path(command) {
-                                Some(path) => {
-                                    match Command::new(path).output() {
-                                        Ok(output) => {
-                                            // Print the output
-                                            io::stdout().write_all(&output.stdout).unwrap();
-                                            io::stderr().write_all(&output.stderr).unwrap();
-                                        },
-                                        Err(_) => println!("Failed to execute: {}", command),
-                                    }
-                                },
-                                None => {
-                                    println!("{}: command not found", command);
-                                }
+                            match find_executable_in_path(arg) {
+                                Some(path) => println!("{} is {}", arg, path.to_string_lossy()),
+                                None => println!("{}: not found", arg),
                             }
-                        }
+                        },
                     }
                 } else {
-                    println!("{}: command not found", input.trim());
+                    println!("{}: command not found", input_trimmed);
+                }
+            },
+            _ => {
+                // Try to execute as an external command
+                match find_executable_in_path(command) {
+                    Some(path) => {
+                        // Get all arguments (excluding the command)
+                        let args = if parts.len() > 1 {
+                            &parts[1..]
+                        } else {
+                            &[]
+                        };
+
+                        // Create a command that properly uses the command name, not the path
+                        match Command::new(&path).args(args).output() {
+                            Ok(output) => {
+                                // Print the output
+                                io::stdout().write_all(&output.stdout).unwrap();
+                                io::stderr().write_all(&output.stderr).unwrap();
+                            },
+                            Err(_) => println!("Failed to execute: {}", command),
+                        }
+                    },
+                    None => {
+                        println!("{}: command not found", input_trimmed),
+                    }
                 }
             }
         }
