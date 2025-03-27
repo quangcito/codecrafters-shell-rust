@@ -51,17 +51,13 @@ fn main() {
                 };
                 match ep {
                     Some(ref e) => {
-                        if let Some(dir) = e.iter().find(|t| t.join(cmd).exists()) {
-                            // Get the full path to the executable
-                            let exe_path = dir.join(cmd);
-
-                            // Execute the command, but make sure it sees its name as just the command
-                            let output = Command::new(exe_path)
-                                .arg0(cmd)  // This is the key - set argv[0] to just the command name
-                                .args(args.split_whitespace())
+                        if let Some(_dir) = e.iter().find(|t| t.join(cmd).exists()) {
+                            let output = Command::new(cmd)
+                                .args(args.split_whitespace())  // Changed to split_whitespace for better handling
                                 .output()
                                 .unwrap();
 
+                            // Print stdout only once
                             io::stdout().write_all(&output.stdout).unwrap();
                             io::stderr().write_all(&output.stderr).unwrap();
                         } else {
