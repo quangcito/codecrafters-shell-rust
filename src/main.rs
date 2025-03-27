@@ -48,7 +48,7 @@ fn main() {
                             }
                         },
                         None => {
-                            println!("{}: command not found", input.trim()),
+                            println!("{}: command not found", input.trim());
                         }
                     }
                 }
@@ -73,13 +73,13 @@ fn main() {
                                     }
                                 },
                                 None => {
-                                    println!("{}: command not found", command),
+                                    println!("{}: command not found", command);
                                 }
                             }
                         }
                     }
                 } else {
-                    println!("{}: command not found", input.trim()),
+                    println!("{}: command not found", input.trim());
                 }
             }
         }
