@@ -1,104 +1,74 @@
 #[allow(unused_imports)]
 use std::io::{self, Write};
+use std::path::Path;
 use std::process::Command;
-use pathsearch::find_executable_in_path;
-use std::os::unix::fs;
 
 fn main() {
-    let mut stdout = io::stdout();
-    let stdin = io::stdin();
-    let mut input = String::new();
-
+    let env_path = std::env::vars_os()
+        .find(|v| "PATH".eq(&v.0))
+        .map(|ev| ev.1.into_string().unwrap());
+    let b: String;
+    let ep = if env_path.is_some() {
+        b = env_path.unwrap();
+        Some(b.split(':').map(|p| Path::new(p)).collect::<Vec<_>>())
+    } else {
+        None::<Vec<&Path>>
+    };
     loop {
-        input.clear();
         print!("$ ");
-        stdout.flush().unwrap();
+        io::stdout().flush().unwrap();
+        // Wait for user input
+        let stdin = io::stdin();
+        let mut input = String::new();
         stdin.read_line(&mut input).unwrap();
-
-        let input_trimmed = input.trim();
-
-        if input_trimmed.is_empty() {
-            continue;
-        }
-
-        let parts: Vec<&str> = input_trimmed.split_whitespace().collect();
-        let command = parts[0];
-
-        match command {
-            "exit" => {
-                if parts.len() > 1 && parts[1] == "0" {
-                    break;
-                } else {
-                    println!("{}: command not found", input_trimmed);
-                }
-            },
-            "echo" => {
-                if parts.len() > 1 {
-                    println!("{}", &input_trimmed[5..]);
-                } else {
-                    println!();
-                }
-            },
-            "type" => {
-                if parts.len() > 1 {
-                    let arg = parts[1];
-                    match arg {
-                        "echo" | "exit" | "type" => println!("{} is a shell builtin", arg),
-                        _ => {
-                            match find_executable_in_path(arg) {
-                                Some(path) => println!("{} is {}", arg, path.to_string_lossy()),
-                                None => println!("{}: not found", arg),
-                            }
-                        },
-                    }
-                } else {
-                    println!("{}: command not found", input_trimmed);
-                }
-            },
-            _ => {
-                // Try to execute as an external command
-                match find_executable_in_path(command) {
-                    Some(path) => {
-                        // Build the command arguments
-                        let mut cmd_args = String::new();
-                        for part in &parts[1..] {
-                            if !cmd_args.is_empty() {
-                                cmd_args.push(' ');
-                            }
-                            // Escape any spaces or special characters
-                            if part.contains(' ') || part.contains('"') || part.contains('\'') {
-                                cmd_args.push_str(&format!("\"{}\"", part.replace("\"", "\\\"")));
+        let trimmed_input = input.trim_end();
+        match trimmed_input {
+            s if s.starts_with("echo ") => {
+                println!("{}", trimmed_input.split_at(5).1);
+            }
+            s if s.starts_with("type ") => {
+                let arg = s.split_at(5).1;
+                match arg {
+                    "echo" | "exit" | "type" => println!("{arg} is a shell builtin"),
+                    _ => match ep {
+                        Some(ref e) => {
+                            if let Some(dir) = e.iter().find(|t| t.join(arg).exists()) {
+                                println!("{} is {}/{}", arg, dir.to_str().unwrap(), arg);
                             } else {
-                                cmd_args.push_str(part);
+                                println!("{arg}: not found");
                             }
                         }
-
-                        // Use a shell script with a symbolic link to preserve the command name
-                        let sh_cmd = format!(
-                            "TEMP_DIR=$(mktemp -d) && \
-                             ln -sf {} $TEMP_DIR/{} && \
-                             $TEMP_DIR/{} {} && \
-                             rm -rf $TEMP_DIR",
-                            path.to_string_lossy(),
-                            command,
-                            command,
-                            cmd_args
-                        );
-
-                        match Command::new("sh")
-                              .arg("-c")
-                              .arg(sh_cmd)
-                              .output() {
-                            Ok(output) => {
-                                io::stdout().write_all(&output.stdout).unwrap();
-                                io::stderr().write_all(&output.stderr).unwrap();
-                            },
-                            Err(_) => println!("Failed to execute: {}", command),
-                        }
+                        None => println!("{arg}: not found"),
                     },
-                    None => {
-                        println!("{}: command not found", input_trimmed);
+                }
+            }
+            "exit 0" => break,
+            line => {
+                let (cmd, args) = if line.contains(' ') {
+                    line.split_once(' ').unwrap()
+                } else {
+                    (line, "")
+                };
+                match ep {
+                    Some(ref e) => {
+                        if let Some(dir) = e.iter().find(|t| t.join(cmd).exists()) {
+                            // Get the full path to the executable
+                            let exe_path = dir.join(cmd);
+
+                            // Execute the command, but make sure it sees its name as just the command
+                            let output = Command::new(exe_path)
+                                .arg0(cmd)  // This is the key - set argv[0] to just the command name
+                                .args(args.split_whitespace())
+                                .output()
+                                .unwrap();
+
+                            io::stdout().write_all(&output.stdout).unwrap();
+                            io::stderr().write_all(&output.stderr).unwrap();
+                        } else {
+                            println!("{cmd}: command not found");
+                        }
                     }
+                    None => println!("{cmd}: command not found"),
                 }
             }
         }
