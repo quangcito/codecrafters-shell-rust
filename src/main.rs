@@ -8,11 +8,19 @@ fn main() {
 
 
     loop {
+        input.clear();
         print!("$ ");
         stdout.flush().unwrap();
 
         stdin.read_line(&mut input).unwrap();
-        println!("{}: command not found", input.trim());
-        input.clear();
+        match input.trim() {
+            "exit 0" => break,
+            &_ => {
+                println!("{}: command not found", input.trim());
+            }
+        }
+        if input.trim() == "exit 0" {
+            break;
+        }
     }
 }
