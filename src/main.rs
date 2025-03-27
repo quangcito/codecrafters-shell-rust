@@ -7,8 +7,8 @@ fn main() {
     io::stdout().flush().unwrap();
 
     // Wait for user input
+    let stdin = io::stdin();
     let mut input = String::new();
-    io::stdin()
-        .read_line(&mut input)
-        .expect("{input}: command not found");
+    stdin.read_line(&mut input).unwrap();
+    println!("{}: command not found", input.trim());
 }
