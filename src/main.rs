@@ -12,6 +12,9 @@ fn main() {
         stdout.flush().unwrap();
 
         stdin.read_line(&mut input).unwrap();
+        if input.trim() == "exit 0" {
+            break;
+        }
         println!("{}: command not found", input.trim());
         input.clear();
     }
