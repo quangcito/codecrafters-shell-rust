@@ -2,6 +2,7 @@
 use std::io::{self, Write};
 use std::path::Path;
 use std::process::Command;
+use std::env;
 
 fn main() {
     let env_path = std::env::vars_os()
@@ -43,6 +44,7 @@ fn main() {
                 }
             }
             "exit 0" => break,
+            "pwd" => println!("{}", env::current_dir().unwrap().display()),
             line => {
                 let (cmd, args) = if line.contains(' ') {
                     line.split_once(' ').unwrap()
